@@ -1,3 +1,2 @@
 class DockerRspec
-
 end

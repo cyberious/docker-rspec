@@ -2,7 +2,9 @@ require 'docker-rspec'
 require 'rake'
 require 'rake/tasklib'
 
+# DockerRspec class definition for auto test
 class DockerRspec
+  ## Declare rake task for docker-rspec
   class RakeTask < ::Rake::TaskLib
     include ::Rake::DSL if defined?(::Rake::DSL)
 
@@ -13,44 +15,60 @@ class DockerRspec
     def initialize(*args, &task_block)
       @name  = args.shift || :dspec
       @image = 'cyberious/docker_rspec'
-      @tag   = ENV['PUPPET_GEM_VERSION'] || '5.3'
+      @tag   = ENV['PUPPET_GEM_VERSION'] || '5.5'
       define(args, &task_block)
     end
 
-    def define(*args, &task_block)
+    def define(*_args)
+      image = "#{@image}:#{@tag}"
       desc 'Run rspec within the current context of a box'
       task @name do
         require 'docker'
         current_project = Dir.pwd
-        if !Docker::Image.exist?("cyberious/rspec_puppet:#{@tag}")
-          puts "Pulling docker image"
-          Docker::Image.create('fromImage' => "cyberious/rspec_puppet:#{@tag}")
-        end
-
-        puts "Creating container"
-        container = Docker::Container.create(
-          'Env'        => ["TERM=xterm-256color"],
-          'Image'      => "cyberious/rspec_puppet:#{@tag}",
-          'HostConfig' => { 'Binds' => ["#{current_project}:/code:ro"] },
-          'Tty'        => true)
-        puts "Starting container #{container}"
-        container.tap(&:start).attach(
-          :stream => true,
-          :stdin  => nil,
-          :stdout => true,
-          :stderr => true, :logs => true, :tty => true) do |stream, chunk|
-          if stream =~ %r{Resolving deltas} || stream == '.' || stream =~ %r{Receiving objects} || %r{^remote:}
-            msg = stream + "\r"
-          else
-            msg = stream
-          end
-          print "#{msg}" unless msg.empty?
-        end
-
+        container       = create_container(current_project, image)
+        start_container(container)
       end
     end
 
+    def pull_container(image)
+      return false if Docker::Image.exist?(image)
 
+      puts 'Pulling docker image'
+      Docker::Image.create('fromImage' => image)
+    end
+
+    def create_container(project_dir, image)
+      pull_container(image)
+      puts 'Creating container'
+      Docker::Container.create(
+        'Env'        => ['TERM=xterm-256color'],
+        'Image'      => image,
+        'HostConfig' => { 'Binds' => ["#{project_dir}:/code:ro"] },
+        'Tty'        => true
+      )
+    end
+
+    def parse_stream(stream)
+      msg = if stream =~ /(Resolving deltas|Receiving objects|^remote:|^\.$)/
+              stream + "\r"
+            else
+              stream
+            end
+
+      msg
+    end
+
+    def start_container(container)
+      puts "Starting container #{container}"
+      container.tap(&:start).attach(
+        stream: true, stdin: nil, stdout: true,
+        stderr: true, logs: true, tty: true
+      ) do |stream, _chunk|
+        msg = parse_stream(stream)
+
+        print msg.to_s unless msg.empty?
+      end
+    end
   end
 end
 
