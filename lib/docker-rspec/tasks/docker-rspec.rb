@@ -39,7 +39,7 @@ class DockerRspec
           :stdin  => nil,
           :stdout => true,
           :stderr => true, :logs => true, :tty => true) do |stream, chunk|
-          if stream =~ /Resolving deltas/ || stream == '.' || stream =~ /Receiving objects/ || /^remote:/
+          if stream =~ %r{Resolving deltas} || stream == '.' || stream =~ %r{Receiving objects} || %r{^remote:}
             msg = stream + "\r"
           else
             msg = stream
