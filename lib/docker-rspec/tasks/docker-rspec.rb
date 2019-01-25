@@ -1,6 +1,7 @@
 require 'docker-rspec'
 require 'rake'
 require 'rake/tasklib'
+require 'puppet'
 
 # DockerRspec class definition for auto test
 class DockerRspec
@@ -11,11 +12,14 @@ class DockerRspec
     attr_accessor :puppet_version
     attr_accessor :image
     attr_accessor :tty
+    def parse_version
+        ver = Puppet.version.gsub(/\.\d+$/, '')
+    end
 
     def initialize(*args, &task_block)
       @name  = args.shift || :dspec
-      @image = 'cyberious/docker_rspec'
-      @tag   = ENV['PUPPET_GEM_VERSION'] || '5.5'
+      @image = 'cyberious/rspec_puppet'
+      @tag   = parse_version
       define(args, &task_block)
     end
 

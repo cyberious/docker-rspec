@@ -11,4 +11,5 @@ Gem::Specification.new do |s|
   s.files         = `git ls-files`.split("\n")
   s.require_paths = ['lib']
   s.add_runtime_dependency 'docker-api', '~> 1.34'
+  s.add_runtime_dependency 'puppet'
 end
